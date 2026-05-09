@@ -473,6 +473,31 @@
       animation: flashPulse 1s ease-in-out infinite;
     }
 
+    .flash-replay-row {
+      display: flex;
+      justify-content: center;
+      margin: 10px 0 4px;
+    }
+
+    .btn-flash-replay {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 20px;
+      font-family: inherit;
+      font-size: 0.98rem;
+      font-weight: 800;
+      cursor: pointer;
+      background: #eef6fc;
+      color: #2874a6;
+      box-shadow: 0 3px 0 #aed6f1, 0 4px 12px rgba(52, 152, 219, 0.2);
+      transition: transform 0.12s ease;
+    }
+
+    .btn-flash-replay:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #aed6f1, 0 2px 8px rgba(52, 152, 219, 0.15);
+    }
+
     @keyframes flashPulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.55; }
@@ -1161,27 +1186,6 @@
           fullCount: function (num) {
             return num + m + n;
           },
-          splitHint: function (part, total) {
-            return (
-              "上边这一幅是 " +
-              part +
-              m +
-              "，下边一共要有 " +
-              total +
-              m +
-              "（想一想下边还缺" +
-              fewM +
-              "）"
-            );
-          },
-          addHint: function (a, b) {
-            return (
-              "上边有 " + a + m + "，下边再摆上 " + b + m + "，合起来一共" + fewM + "？"
-            );
-          },
-          subHint: function (a, b) {
-            return "上边这一幅一共有 " + a + m + "，拿走 " + b + m + "，还剩" + fewM + "？";
-          },
           recognizeHint: function () {
             if (t.id === "dots") {
               return "点一下格子，就会出现小圆点；再点一次可以去掉。";
@@ -1205,6 +1209,7 @@
           },
           flashPeek: "只亮一下，快看有" + fewOf + "？",
           flashGuess: "盖住啦～刚才那一眼，有" + fewOf + "？",
+          flashReplayBtn: "再看一眼",
           patternQuestion: "空着那一格，下一个放什么？",
           patternPickA: "放「这一种」",
           patternPickB: "放「另一种」",
@@ -1226,23 +1231,19 @@
           case "oneStep":
             return w.oneStepHint();
           case "split":
-            return "想一想：上边和下边两幅图里的" + w.noun + "，合起来一共" + w.fewM + "。";
+            return "看一看上边这一幅有几个，再想：还要补上几个，才和题目里说的「一共」一样多？";
           case "addsub":
             return (
-              "加法：先看上边有" +
-              w.fewM +
-              "，再想下边要加" +
-              w.fewM +
-              "；减法：先看上边一共有" +
-              w.fewM +
-              "，再想想拿走" +
+              "加法：上、下两幅里的" +
+              w.noun +
+              "一起数；减法：只数上边一幅，在心里拿走题目里的那一份，再数还剩" +
               w.fewM +
               "。"
             );
           case "make10":
             return "比如 8 需要和 2 凑成 10，从另一个数里「借」过来。";
           case "flash":
-            return "数量只在 1～5，没看清也没关系，下一题再试～";
+            return "数量只在 1～5；没看清可以点「再看一眼」，会再亮一小下～";
           case "patternAb":
             return "先看清上面「完整一小节」再往下接；AAB / AABB 不能当成只有两个在轮流。";
           default:
@@ -1321,9 +1322,9 @@
             ];
           case "split":
             return [
-              "你会看到「上边」已经有一小堆" + w.noun + "，「下边」要凑成题目说的一共" + w.fewM + "。",
+              "你会看到十格阵「上边」已经摆出一部分" + w.noun + "，题目问：还要几个，才能凑成一共" + w.fewM + "。",
               "就像拼图：已知一块，想想还要补上几块，才能拼成大大的那一幅。",
-              "用十格阵想一想：上边有的，加上下边缺的，合起来等于题目里的总数。"
+              "用十格阵数一数已经有的，再想还要补上多少，合起来等于题目里的总数。"
             ];
           case "addsub":
             return [
@@ -1423,10 +1424,10 @@
       ];
 
       const FLASH_SOFT = [
-        "没看清也没关系，下一题再盯一眼～",
-        "小脑袋休息一下，再猜一次～",
-        "这次没记住不打紧，我们轻轻再试～",
-        "眨眨眼，下一题会再亮一次哦～"
+        "没看清也没关系，点「再看一眼」再盯一下～",
+        "小脑袋休息一下，可以点「再看一眼」再猜～",
+        "这次没记住不打紧，点「再看一眼」会再亮一下哦～",
+        "眨眨眼，想再看就点「再看一眼」～"
       ];
 
       const PATTERN_SOFT = [
@@ -2223,6 +2224,26 @@
               "</div>" +
               '<p class="hint" style="text-align:center;margin-top:10px;">选刚才的数量（答案在 1～5）</p>' +
               "</div>";
+            const replayRow = document.createElement("div");
+            replayRow.className = "flash-replay-row";
+            const replayBtn = document.createElement("button");
+            replayBtn.type = "button";
+            replayBtn.className = "btn-flash-replay";
+            replayBtn.textContent = w.flashReplayBtn;
+            replayBtn.addEventListener("click", function () {
+              const prob = currentProblem;
+              if (!prob || prob.type !== "flash" || prob.phase !== "guess") {
+                return;
+              }
+              clearFlashTimer();
+              clearTimeout(feedbackTimer);
+              el.feedback.textContent = "";
+              el.feedback.className = "feedback";
+              prob.phase = "peek";
+              renderProblem();
+            });
+            replayRow.appendChild(replayBtn);
+            el.gameArea.appendChild(replayRow);
             appendNumericChoices(el.gameArea, p.choices, function (v) {
               return v === p.n;
             });
@@ -2339,12 +2360,7 @@
             '<span class="frame-label">上边</span>' +
             renderTenFrame(p.part) +
             "</div>" +
-            '<div class="frame-block">' +
-            '<span class="frame-label">下边</span>' +
-            renderTenFrame(p.total - p.part, { chips: "yellow" }) +
-            "</div>" +
-            "</div>" +
-            '<p class="hint" style="margin-top:4px;">' + w.splitHint(p.part, p.total) + "</p>";
+            "</div>";
           appendNumericChoices(el.gameArea, p.choices, function (v) {
             return v === p.correct;
           });
@@ -2364,8 +2380,7 @@
               '<span class="frame-label">下边</span>' +
               renderTenFrame(p.b, { chips: "yellow", small: true }) +
               "</div>" +
-              "</div>" +
-              '<p class="hint">' + w.addHint(p.a, p.b) + "</p>";
+              "</div>";
           } else {
             el.gameArea.innerHTML =
               '<div class="compare-stack">' +
@@ -2373,8 +2388,7 @@
               '<span class="frame-label">上边</span>' +
               renderTenFrame(p.a) +
               "</div>" +
-              "</div>" +
-              '<p class="hint">' + w.subHint(p.a, p.b) + "</p>";
+              "</div>";
           }
           appendNumericChoices(el.gameArea, p.choices, function (v) {
             return v === p.ans;
