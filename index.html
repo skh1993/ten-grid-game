@@ -1,0 +1,2648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>十格阵数学小游戏</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Nunito:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: linear-gradient(165deg, #e8f4fc 0%, #fdf6e3 45%, #fce4ec 100%);
+      --card: #ffffff;
+      --shadow: 0 12px 40px rgba(80, 120, 160, 0.15);
+      --accent: #5b9bd5;
+      --accent2: #f4a261;
+      --success: #2ecc71;
+      --chip: #ff6b9d;
+      --chip-alt: #ffd93d;
+      --text: #2c3e50;
+      --muted: #7f8c8d;
+      --frame-border: #b8d4e8;
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: "ZCOOL KuaiLe", "Nunito", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    h1 {
+      margin: 8px 0 4px;
+      font-size: clamp(1.35rem, 4vw, 1.75rem);
+      text-align: center;
+      color: #34495e;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .screen {
+      width: 100%;
+      max-width: 420px;
+      display: none;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 14px;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.85); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .game-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    #game-area {
+      width: 100%;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: visible;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+
+    .game-card.shake {
+      animation: cardShake 0.55s ease;
+    }
+
+    @keyframes cardShake {
+      0%, 100% { transform: translateX(0); }
+      18% { transform: translateX(-10px) rotate(-0.6deg); }
+      36% { transform: translateX(10px) rotate(0.6deg); }
+      54% { transform: translateX(-7px); }
+      72% { transform: translateX(7px); }
+    }
+
+    .question-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .question-row .question {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      display: block;
+      text-align: left;
+      font-size: 1.22rem;
+      line-height: 1.45;
+      min-height: 2.6em;
+    }
+
+    .btn-read {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      border: none;
+      border-radius: 50%;
+      font-size: 1.35rem;
+      cursor: pointer;
+      touch-action: manipulation;
+      background: linear-gradient(180deg, #fff6e5 0%, #ffe8cc 100%);
+      box-shadow: 0 4px 0 #e8c48a, 0 6px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s ease;
+    }
+
+    .btn-read:active {
+      transform: scale(0.92) translateY(2px);
+      box-shadow: 0 2px 0 #e8c48a, 0 3px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .streak-pill {
+      text-align: center;
+      font-size: 0.98rem;
+      font-weight: 800;
+      color: #c0392b;
+      background: linear-gradient(90deg, #fff5f5, #ffe8e8);
+      border-radius: 999px;
+      padding: 8px 14px;
+      margin-bottom: 8px;
+      border: 2px solid #fadbd8;
+      animation: bounce 0.45s ease;
+    }
+
+    .streak-pill[hidden] {
+      display: none;
+    }
+
+    .burst-host {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 3;
+      overflow: visible;
+    }
+
+    .burst-piece {
+      position: absolute;
+      font-size: clamp(1.15rem, 4.5vw, 1.55rem);
+      animation: burstUp 0.95s ease-out forwards;
+      filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.12));
+    }
+
+    @keyframes burstUp {
+      0% {
+        transform: translateY(0) scale(0.5) rotate(-8deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(min(-42vh, -220px)) scale(1.05) rotate(12deg);
+        opacity: 0;
+      }
+    }
+
+    .ten-frame.frame-wiggle {
+      animation: frameNudge 2.2s ease-in-out 1;
+    }
+
+    @keyframes frameNudge {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(91, 155, 213, 0); }
+      12% { transform: scale(1.03); box-shadow: 0 0 0 6px rgba(91, 155, 213, 0.2); }
+      28% { transform: scale(1); }
+      44% { transform: scale(1.025); }
+    }
+
+    .digit-pop {
+      display: inline-block;
+      animation: digitPop 1.4s ease-in-out infinite;
+    }
+
+    @keyframes digitPop {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+
+    .ten-frame .cell.interactive {
+      min-height: 48px;
+    }
+
+    .hint.kid-tip {
+      font-size: 0.82rem;
+      color: #95a5a6;
+      margin-top: 4px;
+    }
+
+    .level-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .level-btn {
+      border: none;
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      font-family: inherit;
+      font-size: 1.05rem;
+      text-align: left;
+      cursor: pointer;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      color: var(--text);
+      touch-action: manipulation;
+    }
+
+    .level-btn:active {
+      transform: scale(0.98);
+    }
+
+    .level-btn.locked {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .level-num {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #7ec8e3);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .level-btn:nth-child(2) .level-num { background: linear-gradient(135deg, #e17055, #f4a261); }
+    .level-btn:nth-child(3) .level-num { background: linear-gradient(135deg, #6c5ce7, #a29bfe); }
+    .level-btn:nth-child(4) .level-num { background: linear-gradient(135deg, #00b894, #55efc4); }
+    .level-btn:nth-child(5) .level-num { background: linear-gradient(135deg, #0984e3, #74b9ff); }
+    .level-btn:nth-child(6) .level-num { background: linear-gradient(135deg, #d63031, #ff7675); }
+    .level-btn:nth-child(7) .level-num { background: linear-gradient(135deg, #a29bfe, #6c5ce7); }
+    .level-btn:nth-child(8) .level-num { background: linear-gradient(135deg, #fdcb6e, #e17055); }
+    .level-btn:nth-child(9) .level-num { background: linear-gradient(135deg, #dfe6e9, #b2bec3); }
+    .level-btn:nth-child(10) .level-num { background: linear-gradient(135deg, #fab1a0, #e84393); }
+
+    .pattern-frame-wrap {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      margin: 0 auto 4px;
+      box-sizing: border-box;
+    }
+
+    .pattern-frame {
+      display: grid;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      grid-template-columns: repeat(var(--pcols, 5), minmax(0, 1fr));
+      gap: clamp(4px, 1.2vw, 8px);
+      padding: clamp(8px, 2vw, 12px);
+      background: #f8fbff;
+      border: 4px solid var(--frame-border);
+      border-radius: 16px;
+      align-items: stretch;
+    }
+
+    .pattern-frame .cell.pattern-cell {
+      aspect-ratio: 1;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .pattern-frame .cell.pattern-cell .chip-emoji {
+      max-width: 100%;
+      max-height: 100%;
+      font-size: clamp(0.72rem, 5vw, 1.65rem);
+    }
+
+    .pattern-frame .cell.pattern-gap {
+      aspect-ratio: 1;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      border: 3px dashed #74b9ff;
+      background: #fffefc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pattern-q {
+      font-size: clamp(1.35rem, 5vw, 1.75rem);
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .choices.pattern-ab-choices {
+      grid-template-columns: 1fr 1fr;
+      max-width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .choice.pattern-pick {
+      min-height: 96px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 1.02rem;
+      padding: 12px 8px;
+    }
+
+    .pattern-pick-visual {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: #eef6fc;
+      border: 2px solid #c5d9eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pattern-pick-visual .chip {
+      width: 78%;
+      height: 78%;
+    }
+
+    .pattern-pick-visual .chip-emoji {
+      font-size: clamp(1.25rem, 4.5vw, 1.75rem);
+      width: 90%;
+      height: 90%;
+    }
+
+    .pattern-pick-label {
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.25;
+      font-size: 0.98rem;
+      color: #2c3e50;
+    }
+
+    .pattern-unit-legend-title {
+      font-size: 0.88rem;
+      color: var(--muted);
+      text-align: center;
+      margin: 0 0 6px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .pattern-unit-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin: 0 auto 12px;
+      flex-wrap: wrap;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .pattern-unit-row .cell.pattern-legend-chip {
+      width: 40px;
+      height: 40px;
+      min-height: 40px;
+      aspect-ratio: auto;
+      flex-shrink: 0;
+      padding: 0;
+    }
+
+    .pattern-unit-row .pattern-legend-chip .chip-emoji {
+      font-size: clamp(1rem, 3.8vw, 1.35rem);
+    }
+
+    .flash-wrap {
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    .flash-masked {
+      position: relative;
+      width: min(100%, 280px);
+      margin: 0 auto;
+    }
+
+    .flash-masked .ten-frame-wrap {
+      margin: 0;
+    }
+
+    .flash-veil {
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      background: rgba(255, 252, 248, 0.94);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #95a5a6;
+      pointer-events: none;
+      box-shadow: inset 0 0 0 3px rgba(189, 195, 199, 0.35);
+    }
+
+    .flash-veil-emoji {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .flash-hint-line {
+      text-align: center;
+      margin-top: 8px;
+      animation: flashPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes flashPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+
+    .level-info {
+      flex: 1;
+    }
+
+    .level-title {
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    .level-desc {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .stars {
+      font-size: 0.9rem;
+      letter-spacing: 2px;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .btn-back {
+      border: none;
+      background: var(--card);
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+
+    .progress-pill {
+      background: var(--card);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+
+    .question {
+      font-size: 1.2rem;
+      text-align: center;
+      line-height: 1.5;
+      min-height: 3.2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ten-frame-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      margin: 8px 0;
+    }
+
+    .ten-frame {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 6px;
+      width: min(100%, 280px);
+      aspect-ratio: 5 / 2;
+      padding: 10px;
+      background: #f8fbff;
+      border: 4px solid var(--frame-border);
+      border-radius: 16px;
+    }
+
+    .ten-frame.small {
+      width: min(48%, 200px);
+      gap: 4px;
+      padding: 8px;
+    }
+
+    .cell {
+      border-radius: 12px;
+      background: #eef6fc;
+      border: 2px dashed #c5d9eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .cell.interactive {
+      cursor: pointer;
+    }
+
+    .cell.interactive:active {
+      transform: scale(0.96);
+    }
+
+    .cell.filled {
+      background: transparent;
+      border-style: solid;
+      border-color: transparent;
+    }
+
+    .chip {
+      width: 72%;
+      height: 72%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ffb3c9, var(--chip));
+      box-shadow: inset -2px -4px 8px rgba(0,0,0,0.12), 2px 4px 8px rgba(233, 69, 96, 0.25);
+      animation: pop 0.35s ease;
+    }
+
+    .chip.yellow {
+      background: radial-gradient(circle at 30% 30%, #fff3b0, var(--chip-alt));
+      box-shadow: inset -2px -4px 8px rgba(0,0,0,0.1), 2px 4px 8px rgba(230, 180, 34, 0.3);
+    }
+
+    .chip.blue {
+      background: radial-gradient(circle at 30% 30%, #a8d8ff, #4dabf7);
+      box-shadow: inset -2px -4px 8px rgba(0,0,0,0.1), 2px 4px 8px rgba(52, 152, 219, 0.35);
+    }
+
+    .chip-emoji {
+      font-size: clamp(1.35rem, 5.2vw, 1.95rem);
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 88%;
+      height: 88%;
+      user-select: none;
+      animation: pop 0.35s ease;
+      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.12));
+    }
+
+    .ten-frame.small .chip-emoji {
+      font-size: clamp(1rem, 3.8vw, 1.35rem);
+    }
+
+    .chip-emoji.alt {
+      filter: drop-shadow(0 2px 3px rgba(180, 140, 0, 0.25));
+    }
+
+    .chip-emoji.blue {
+      filter: drop-shadow(0 2px 3px rgba(41, 128, 185, 0.35));
+    }
+
+    .theme-picker-wrap {
+      max-width: 420px;
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+
+    .theme-picker-label {
+      margin: 0 0 10px;
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #34495e;
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .theme-picker-label .sub {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .theme-picker {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .theme-btn {
+      border: 3px solid transparent;
+      border-radius: 16px;
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 800;
+      cursor: pointer;
+      background: #f4f9fc;
+      color: #2c3e50;
+      touch-action: manipulation;
+      transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .theme-btn:active {
+      transform: scale(0.96);
+    }
+
+    .theme-btn.active {
+      border-color: var(--accent);
+      background: #e8f4fc;
+      color: #1a5276;
+    }
+
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .choices.cols-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .choice {
+      min-height: 64px;
+      padding: 10px 8px;
+      border: none;
+      border-radius: 18px;
+      font-family: inherit;
+      font-size: 1.45rem;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+      background: linear-gradient(180deg, #fff 0%, #f0f7fc 100%);
+      color: var(--text);
+      box-shadow: 0 6px 0 #c5d9eb, 0 8px 16px rgba(0,0,0,0.06);
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s;
+    }
+
+    .choice:active {
+      transform: translateY(5px) scale(0.97);
+      box-shadow: 0 2px 0 #c5d9eb, 0 4px 8px rgba(0,0,0,0.06);
+    }
+
+    .choice.wide {
+      grid-column: span 2;
+      font-size: 1.12rem;
+      min-height: 58px;
+    }
+
+    .choice.pulse-wrong {
+      animation: choiceWobble 0.45s ease;
+    }
+
+    @keyframes choiceWobble {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .feedback {
+      text-align: center;
+      font-size: 1.15rem;
+      min-height: 2.5em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      padding: 8px;
+    }
+
+    .feedback.ok {
+      background: #d5f5e3;
+      color: #1e8449;
+      animation: bounce 0.5s ease;
+    }
+
+    .feedback.bad {
+      background: #fdebd0;
+      color: #b9770e;
+    }
+
+    .hint {
+      font-size: 0.88rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .big-digit {
+      font-size: 4.5rem;
+      font-weight: 800;
+      text-align: center;
+      color: var(--accent);
+      text-shadow: 2px 4px 0 rgba(91, 155, 213, 0.2);
+      margin: 8px 0;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      flex: 1;
+      border: none;
+      border-radius: 18px;
+      padding: 16px 18px;
+      font-family: inherit;
+      font-size: 1.12rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #7ec8e3);
+      color: #fff;
+      font-weight: 800;
+      box-shadow: 0 6px 0 #3d7ab0, 0 10px 20px rgba(91, 155, 213, 0.35);
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .btn-primary:active {
+      transform: translateY(4px) scale(0.98);
+      box-shadow: 0 3px 0 #3d7ab0, 0 6px 12px rgba(91, 155, 213, 0.3);
+    }
+
+    .btn-primary.pulse-ok {
+      animation: btnGlow 0.6s ease;
+    }
+
+    @keyframes btnGlow {
+      0% { filter: brightness(1); transform: scale(1); }
+      40% { filter: brightness(1.08); transform: scale(1.03); }
+      100% { filter: brightness(1); transform: scale(1); }
+    }
+
+    .btn-secondary {
+      border: none;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-family: inherit;
+      font-size: 1rem;
+      cursor: pointer;
+      background: var(--card);
+      color: var(--text);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+
+    .celebrate {
+      text-align: center;
+      font-size: 1.4rem;
+      padding: 20px;
+    }
+
+    .label-row {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: -4px;
+    }
+
+    .compare-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      margin: 8px 0;
+    }
+
+    .compare-stack .frame-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .compare-stack .frame-label {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+
+    .make-ten-demo {
+      font-size: 0.92rem;
+      line-height: 1.6;
+      background: #fff9e6;
+      border-radius: 14px;
+      padding: 12px 14px;
+      border: 2px solid #ffeaa7;
+    }
+
+    .menu-tools {
+      display: flex;
+      justify-content: flex-end;
+      width: 100%;
+      max-width: 420px;
+      margin-bottom: 8px;
+    }
+
+    .sound-toggle {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      background: var(--card);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      line-height: 1;
+    }
+
+    .sound-toggle:active {
+      transform: scale(0.96);
+    }
+
+    .teach-card {
+      max-width: 420px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .teach-card .teach-badge,
+    .teach-card .teach-title,
+    .teach-card .teach-body,
+    .teach-card .teach-tip {
+      width: 100%;
+    }
+
+    .teach-card .btn-primary {
+      flex: none;
+      width: auto;
+      min-width: min(100%, 260px);
+      max-width: 100%;
+      padding-left: 28px;
+      padding-right: 28px;
+    }
+
+    .teach-badge {
+      font-size: 2.5rem;
+      text-align: center;
+      margin-bottom: 6px;
+      line-height: 1;
+    }
+
+    .teach-title {
+      margin: 0 0 14px;
+      font-size: 1.25rem;
+      text-align: center;
+      color: #2c3e50;
+      line-height: 1.35;
+    }
+
+    .teach-body {
+      font-size: 1.02rem;
+      line-height: 1.65;
+      color: #34495e;
+      margin-bottom: 18px;
+    }
+
+    .teach-para {
+      margin: 0 0 12px;
+      padding-left: 0.1em;
+    }
+
+    .teach-para:last-child {
+      margin-bottom: 0;
+    }
+
+    .teach-tip {
+      font-size: 0.9rem;
+      color: var(--muted);
+      background: #f4f9fc;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .top-spacer {
+      width: 48px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>十格阵数学乐园</h1>
+  <p class="subtitle">玩一玩，数一数，越来越棒</p>
+
+  <!-- 关卡选择 -->
+  <div id="screen-menu" class="screen active">
+    <div class="menu-tools">
+      <button type="button" class="sound-toggle" id="btn-sound-menu" title="音效开关">🔊 音效</button>
+    </div>
+    <div class="card theme-picker-wrap">
+      <p class="theme-picker-label" id="theme-picker-label"></p>
+      <div class="theme-picker" id="theme-picker"></div>
+    </div>
+    <div class="card level-grid" id="level-list"></div>
+    <p class="hint">建议每天玩一小关，循序渐进效果最好哦</p>
+  </div>
+
+  <!-- 小课堂（每关先讲再玩） -->
+  <div id="screen-teach" class="screen">
+    <div class="top-bar">
+      <button type="button" class="btn-back" id="btn-teach-back">← 返回</button>
+      <span class="progress-pill">小课堂</span>
+      <span class="top-spacer" aria-hidden="true"></span>
+    </div>
+    <div class="card teach-card">
+      <div class="teach-badge" id="teach-badge">📖</div>
+      <h2 class="teach-title" id="teach-title"></h2>
+      <div class="teach-body" id="teach-body"></div>
+      <p class="teach-tip">家长可以陪着读一读，再让孩子自己点「开始玩」。</p>
+      <button type="button" class="btn-primary" id="btn-teach-start">知道了，开始玩！</button>
+    </div>
+  </div>
+
+  <!-- 游戏中 -->
+  <div id="screen-game" class="screen">
+    <div class="top-bar">
+      <button type="button" class="btn-back" id="btn-back">← 返回</button>
+      <span class="progress-pill" id="progress-text"></span>
+      <button type="button" class="sound-toggle" id="btn-sound-game" title="音效开关">🔊</button>
+    </div>
+    <div class="card game-card" id="game-card">
+      <div class="question-row">
+        <p class="question" id="question-text"></p>
+        <button type="button" class="btn-read" id="btn-read-question" title="听一听题目" aria-label="听一听题目">🔈</button>
+      </div>
+      <div id="streak-pill" class="streak-pill" hidden>🔥</div>
+      <div id="game-area"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="actions" id="game-actions" style="display:none;">
+        <button type="button" class="btn-primary" id="btn-next">下一题</button>
+      </div>
+      <div class="burst-host" id="burst-host" aria-hidden="true"></div>
+    </div>
+    <p class="hint" id="level-hint"></p>
+    <p class="hint kid-tip">点题目旁的小喇叭 🔈，可以听题目慢慢想</p>
+  </div>
+
+  <!-- 关卡完成 -->
+  <div id="screen-done" class="screen">
+    <div class="card celebrate" id="done-message"></div>
+    <button type="button" class="btn-primary" id="btn-done-home">回到关卡</button>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "tenFrameMathKids_v1";
+
+      const CHIP_THEMES = [
+        {
+          id: "dots",
+          label: "小圆点",
+          measure: "颗",
+          noun: "小圆点",
+          primarySet: null,
+          altSet: null,
+          blueSet: null
+        },
+        {
+          id: "fruit",
+          label: "水果",
+          measure: "个",
+          noun: "水果",
+          primarySet: ["🍎", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🍑", "🥝", "🍒"],
+          altSet: ["🥭", "🍍", "🫐", "🍈", "🍐", "🥑", "🍎", "🍊", "🍌", "🍉"],
+          blueSet: ["🍏", "🥥", "🍠", "🥒", "🍆", "🥕", "🌽", "🫑", "🥦", "🫐"]
+        },
+        {
+          id: "vehicle",
+          label: "小汽车",
+          measure: "辆",
+          noun: "小汽车",
+          primarySet: ["🚗", "🚕", "🚌", "🚙", "🏎️", "🚓", "🚑", "🚒", "🛻", "🚐"],
+          altSet: ["🚜", "🛵", "🏍️", "🚲", "🛴", "🚁", "✈️", "🚂", "🚢", "⛵"],
+          blueSet: ["🛸", "🚀", "🚉", "🚇", "🚝", "🚄", "🚅", "🚈", "🚞", "🚋"]
+        },
+        {
+          id: "animal",
+          label: "小动物",
+          measure: "只",
+          noun: "小动物",
+          primarySet: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯"],
+          altSet: ["🦁", "🐮", "🐷", "🐸", "🐵", "🐔", "🐧", "🐦", "🦆", "🦉"],
+          blueSet: ["🐳", "🐬", "🦭", "🐡", "🐙", "🦀", "🐢", "🐍", "🦎", "🐊"]
+        }
+      ];
+
+      const LEVELS = [
+        {
+          id: "subitize",
+          title: "一眼识数",
+          rounds: 8,
+          teachEmoji: "👀",
+          teachTitle: "一眼识数：用小眼睛「抓」总数"
+        },
+        {
+          id: "compare",
+          title: "比大小",
+          rounds: 8,
+          teachEmoji: "⚖️",
+          teachTitle: "比大小：哪一幅十格阵更「满」？"
+        },
+        {
+          id: "recognize",
+          title: "认识数字",
+          rounds: 6,
+          teachEmoji: "🔢",
+          teachTitle: "认识数字：数字和「个数」对上号"
+        },
+        {
+          id: "fill5",
+          title: "补满一排",
+          rounds: 7,
+          teachEmoji: "✋",
+          teachTitle: "补满一排：先认识「5 个一行」"
+        },
+        {
+          id: "oneStep",
+          title: "多1少1",
+          rounds: 7,
+          teachEmoji: "➡️",
+          teachTitle: "相邻数：多 1、少 1"
+        },
+        {
+          id: "split",
+          title: "数的分解",
+          rounds: 8,
+          teachEmoji: "🧩",
+          teachTitle: "数的分解：两个数「拼」成一个总数"
+        },
+        {
+          id: "addsub",
+          title: "加减法",
+          rounds: 8,
+          teachEmoji: "➕",
+          teachTitle: "加减法：在十格阵上「添上」或「拿走」"
+        },
+        {
+          id: "make10",
+          title: "凑十法",
+          rounds: 6,
+          teachEmoji: "🔟",
+          teachTitle: "凑十法：先把一个数「补」到 10"
+        },
+        {
+          id: "flash",
+          title: "闪一下猜",
+          rounds: 6,
+          teachEmoji: "✨",
+          teachTitle: "闪一下猜：小眼睛快捕"
+        },
+        {
+          id: "patternAb",
+          title: "找规律摆",
+          rounds: 8,
+          teachEmoji: "🔁",
+          teachTitle: "找规律摆：一小节重复排队（AAB、AABB…）"
+        }
+      ];
+
+      function chipWordPack() {
+        const t = getChipThemeDef();
+        const m = t.measure || "个";
+        const n = t.noun || "物品";
+        const fewOf = "几" + m + n;
+        const fewM = "几" + m;
+        return {
+          label: t.label,
+          measure: m,
+          noun: n,
+          fewOf: fewOf,
+          fewM: fewM,
+          qSubitize: "十格阵里有" + fewOf + "？点一点正确的数字吧",
+          qCompare: "上边和下边，哪边的" + n + "更多？",
+          recognizeTail: "点下面格子，摆同样多的" + n,
+          compact: function (num) {
+            return num + m;
+          },
+          fullCount: function (num) {
+            return num + m + n;
+          },
+          splitHint: function (part, total) {
+            return (
+              "上边这一幅是 " +
+              part +
+              m +
+              "，下边一共要有 " +
+              total +
+              m +
+              "（想一想下边还缺" +
+              fewM +
+              "）"
+            );
+          },
+          addHint: function (a, b) {
+            return (
+              "上边有 " + a + m + "，下边再摆上 " + b + m + "，合起来一共" + fewM + "？"
+            );
+          },
+          subHint: function (a, b) {
+            return "上边这一幅一共有 " + a + m + "，拿走 " + b + m + "，还剩" + fewM + "？";
+          },
+          recognizeHint: function () {
+            if (t.id === "dots") {
+              return "点一下格子，就会出现小圆点；再点一次可以去掉。";
+            }
+            return "点一下格子，就会出现" + n + "；再点一次可以去掉。";
+          },
+          fill5Question: function (shown) {
+            return "上面一排已有 " + shown + m + n + "，再摆" + fewM + "，这一排就满了？";
+          },
+          fill5SubHint: function () {
+            return "上面一排一共 5 个格子；下面一排先不用管，专心看上面。";
+          },
+          oneStepQMore: function (num) {
+            return "比 " + num + " 多 1 是几？";
+          },
+          oneStepQLess: function (num) {
+            return "比 " + num + " 少 1 是几？";
+          },
+          oneStepHint: function () {
+            return "先数一数阵里有" + fewM + "，再在心里加 1 或减 1。";
+          },
+          flashPeek: "只亮一下，快看有" + fewOf + "？",
+          flashGuess: "盖住啦～刚才那一眼，有" + fewOf + "？",
+          patternQuestion: "空着那一格，下一个放什么？",
+          patternPickA: "放「这一种」",
+          patternPickB: "放「另一种」",
+          patternLineHint: "一定要对照「完整一小节」接龙；AAB、AABB 不能只看最后两个～"
+        };
+      }
+
+      function hintLineForLevelId(levelId) {
+        const w = chipWordPack();
+        switch (levelId) {
+          case "subitize":
+            return "不用一个一个数，整排是 5，再加上上面或下面" + w.fewM + "。";
+          case "compare":
+            return "先看上面一排满不满，再看下面，比一比上边和下边谁多。";
+          case "recognize":
+            return w.recognizeHint();
+          case "fill5":
+            return "上面一排固定是 5 个格子；想一想还要再摆" + w.fewM + "就满了。";
+          case "oneStep":
+            return w.oneStepHint();
+          case "split":
+            return "想一想：上边和下边两幅图里的" + w.noun + "，合起来一共" + w.fewM + "。";
+          case "addsub":
+            return (
+              "加法：先看上边有" +
+              w.fewM +
+              "，再想下边要加" +
+              w.fewM +
+              "；减法：先看上边一共有" +
+              w.fewM +
+              "，再想想拿走" +
+              w.fewM +
+              "。"
+            );
+          case "make10":
+            return "比如 8 需要和 2 凑成 10，从另一个数里「借」过来。";
+          case "flash":
+            return "数量只在 1～5，没看清也没关系，下一题再试～";
+          case "patternAb":
+            return "先看清上面「完整一小节」再往下接；AAB / AABB 不能当成只有两个在轮流。";
+          default:
+            return "";
+        }
+      }
+
+      function descForLevelIndex(i) {
+        const lv = LEVELS[i];
+        const w = chipWordPack();
+        if (!lv) {
+          return "";
+        }
+        switch (lv.id) {
+          case "subitize":
+            return "十格阵上有" + w.fewOf + "？快速看一看";
+          case "compare":
+            return "上边和下边，哪边的" + w.noun + "更多？";
+          case "recognize":
+            return "按数字摆出同样多的" + w.noun;
+          case "fill5":
+            return "上面 5 格，想想还要摆" + w.fewM;
+          case "oneStep":
+            return "多 1、少 1，练相邻数";
+          case "split":
+            return "知道一共多少，猜缺的那一份";
+          case "addsub":
+            return "用十格阵里的" + w.noun + "想一想";
+          case "make10":
+            return "先凑成 10，再加剩下的";
+          case "flash":
+            return "亮一下再盖住，猜有几个";
+          case "patternAb":
+            return "AAB、AABB…一小节重复";
+          default:
+            return "";
+        }
+      }
+
+      function getTeachLinesForLevel(index) {
+        const lv = LEVELS[index];
+        const w = chipWordPack();
+        if (!lv) {
+          return [];
+        }
+        switch (lv.id) {
+          case "subitize":
+            return [
+              "十格阵就像两个小抽屉：上面一排 5 个格子，下面一排也是 5 个，一共能装 10" + w.measure + w.noun + "。",
+              "数字小的时候，我们可以一个一个数；数字练熟了，就可以「一眼」看出" + w.fewOf + "。",
+              "秘诀是：先看满的一排是不是 5" + w.measure + "，再扫一眼另一排多出来" + w.fewM + "，合起来就是答案啦。"
+            ];
+          case "compare":
+            return [
+              "这一关会摆出「上边一幅、下边一幅」两个十格阵，里面的" + w.noun + "有多有少。",
+              "比多少的时候，可以先看哪一幅更接近「排满两行」，再比一比多出来" + w.fewM + "。",
+              "有时候两边一样多，就选「一样多」。动动眼睛，再动动手指点答案。"
+            ];
+          case "recognize":
+            return [
+              "屏幕会给出一个数字，比如 3。我们要在十格阵里摆出「刚好 3" + w.measure + "」" + w.noun + "。",
+              tPlaceLine(),
+              "摆完觉得对了，就点「我摆好了」。数字和" + w.noun + "数量一样，就对了！"
+            ];
+          case "fill5":
+            return [
+              "十格阵上面一排只有 5 个格子，就像一只手有 5 根手指，特别好记。",
+              "题目只动上面那一排：已经摆出一些" + w.noun + "，想一想还要再摆" + w.fewM + "，这一排就满了。",
+              "答案一定是 1、2、3、4 里的一个，不会太难，试一试吧！"
+            ];
+          case "oneStep":
+            return [
+              "十格阵里会先摆出一些" + w.noun + "。先看一看、数一数，再想「多 1」还是「少 1」。",
+              "比如看到 6，多 1 就是 7；少 1 就是 5。用手指比划一下也可以哦。",
+              "点下面数字里你认为对的那个，答错了也没关系，再点一次。"
+            ];
+          case "split":
+            return [
+              "你会看到「上边」已经有一小堆" + w.noun + "，「下边」要凑成题目说的一共" + w.fewM + "。",
+              "就像拼图：已知一块，想想还要补上几块，才能拼成大大的那一幅。",
+              "用十格阵想一想：上边有的，加上下边缺的，合起来等于题目里的总数。"
+            ];
+          case "addsub":
+            return [
+              "加法：上边先有一些" + w.noun + "，下边是要再摆上去的那一份，合起来一共" + w.fewM + "？",
+              "减法：上边这一幅是全部，想象从里面拿走" + w.fewM + "，还剩" + w.fewM + "？",
+              "题目都在 10 以内，十格阵刚好帮我们把「多少」看清楚。"
+            ];
+          case "make10":
+            return [
+              "十格阵排满两行，正好是 10。凑十就是：先把其中一个数补到 10，更好算。",
+              "比如算 8 + 5：可以把 5 拆成 2 和 3，先用 2 跟 8 凑成 10，再加上剩下的 3。",
+              "游戏里会用小故事和两幅十格阵帮你拆数，最后点出正确的总和就可以啦。"
+            ];
+          case "flash":
+            return [
+              "十格阵会先「亮一下」让你看见" + w.noun + "，大约 1 秒，然后会盖上。",
+              "你只要想一想：刚才亮的那一下，阵里一共有几个～（答案只会是 1～5。）",
+              "没看清也没关系，这一关就是练「快看」和勇敢猜，多玩几次就会越来越准。"
+            ];
+          case "patternAb":
+            return [
+              "有的题是「两个一种、再一个另一种」（AAB），有的是「两个两个换班」（AABB），还有像 AABAAB 这样更长的一小节，都会从头重复。",
+              "屏幕会先亮出「这一小节」长什么样，下面一长排是它的重复；最后一个问号要你接龙。",
+              "下面两个按钮是两种图案：点「放这一种」或「放另一种」，把规律接下去就可以啦。"
+            ];
+          default:
+            return [];
+        }
+      }
+
+      function tPlaceLine() {
+        const t = getChipThemeDef();
+        if (t.id === "dots") {
+          return "点一下空格子，就会放上一颗；再点一次有圆点的格子，可以把它拿走。";
+        }
+        if (t.id === "fruit") {
+          return "点一下空格子，就会放上一个水果；再点一次有水果的格子，可以把它拿走。";
+        }
+        if (t.id === "vehicle") {
+          return "点一下空格子，就会放上一辆小汽车；再点一次有车车的格子，可以把它拿走。";
+        }
+        return "点一下空格子，就会放上一只小动物；再点一次有小动物的格子，可以把它拿走。";
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : {};
+          const allowed = CHIP_THEMES.map(function (x) {
+            return x.id;
+          });
+          const chipTheme =
+            parsed.chipTheme && allowed.indexOf(parsed.chipTheme) !== -1 ? parsed.chipTheme : "dots";
+          return {
+            stars: parsed.stars && typeof parsed.stars === "object" ? parsed.stars : {},
+            soundMuted: !!parsed.soundMuted,
+            chipTheme: chipTheme
+          };
+        } catch {
+          return { stars: {}, soundMuted: false, chipTheme: "dots" };
+        }
+      }
+
+      function saveState(state) {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            stars: state.stars,
+            soundMuted: !!state.soundMuted,
+            chipTheme: state.chipTheme || "dots"
+          })
+        );
+      }
+
+      let state = loadState();
+      let currentLevelIndex = 0;
+      let roundIndex = 0;
+      let currentProblem = null;
+      let feedbackTimer = null;
+      let streak = 0;
+
+      const PRAISE_OK = [
+        "太棒了！答对啦！",
+        "哇，你好聪明！",
+        "对对对，就是这样！",
+        "真厉害，点对了！",
+        "棒棒哒，继续加油！",
+        "答对喽，给你一个赞！"
+      ];
+
+      const SOFT_WRONG = [
+        "再想一想，你可以的！",
+        "没关系，再试一次！",
+        "差一点就对啦！",
+        "动动小脑筋，再点一次～",
+        "别急，慢慢想～"
+      ];
+
+      const FLASH_SOFT = [
+        "没看清也没关系，下一题再盯一眼～",
+        "小脑袋休息一下，再猜一次～",
+        "这次没记住不打紧，我们轻轻再试～",
+        "眨眨眼，下一题会再亮一次哦～"
+      ];
+
+      const PATTERN_SOFT = [
+        "规律有时候要盯两眼，再点一次～",
+        "没接上也超正常，我们轻轻再试～",
+        "想一想第一个、第二个怎么轮流，不着急～"
+      ];
+
+      let flashTimer = null;
+
+      function clearFlashTimer() {
+        if (flashTimer !== null) {
+          window.clearTimeout(flashTimer);
+          flashTimer = null;
+        }
+      }
+
+      const el = {
+        menu: document.getElementById("screen-menu"),
+        teach: document.getElementById("screen-teach"),
+        game: document.getElementById("screen-game"),
+        done: document.getElementById("screen-done"),
+        levelList: document.getElementById("level-list"),
+        question: document.getElementById("question-text"),
+        gameArea: document.getElementById("game-area"),
+        feedback: document.getElementById("feedback"),
+        progress: document.getElementById("progress-text"),
+        hint: document.getElementById("level-hint"),
+        actions: document.getElementById("game-actions"),
+        btnNext: document.getElementById("btn-next"),
+        btnBack: document.getElementById("btn-back"),
+        doneMessage: document.getElementById("done-message"),
+        btnDoneHome: document.getElementById("btn-done-home"),
+        btnSoundMenu: document.getElementById("btn-sound-menu"),
+        btnSoundGame: document.getElementById("btn-sound-game"),
+        gameCard: document.getElementById("game-card"),
+        burstHost: document.getElementById("burst-host"),
+        streakPill: document.getElementById("streak-pill"),
+        btnReadQuestion: document.getElementById("btn-read-question"),
+        teachBadge: document.getElementById("teach-badge"),
+        teachTitle: document.getElementById("teach-title"),
+        teachBody: document.getElementById("teach-body"),
+        btnTeachBack: document.getElementById("btn-teach-back"),
+        btnTeachStart: document.getElementById("btn-teach-start"),
+        themePicker: document.getElementById("theme-picker"),
+        themePickerLabel: document.getElementById("theme-picker-label")
+      };
+
+      let pendingLevelIndex = 0;
+
+      function pickRandom(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      function kidHaptic(ok, gentleWrong) {
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          if (ok) {
+            navigator.vibrate([10, 55, 15]);
+          } else if (gentleWrong) {
+            navigator.vibrate(10);
+          } else {
+            navigator.vibrate([25, 20, 25]);
+          }
+        }
+      }
+
+      function burstCelebrate(big) {
+        if (!el.burstHost) {
+          return;
+        }
+        el.burstHost.innerHTML = "";
+        const emojis = ["⭐", "✨", "🌟", "💫", "🎈", "💖", "🌸", "✿"];
+        const n = big ? 20 : 14;
+        for (let i = 0; i < n; i++) {
+          const piece = document.createElement("span");
+          piece.className = "burst-piece";
+          piece.textContent = emojis[i % emojis.length];
+          piece.style.left = 6 + Math.random() * 86 + "%";
+          piece.style.bottom = 4 + Math.random() * 28 + "%";
+          piece.style.animationDelay = Math.random() * 0.22 + "s";
+          el.burstHost.appendChild(piece);
+        }
+        window.setTimeout(function () {
+          if (el.burstHost) {
+            el.burstHost.innerHTML = "";
+          }
+        }, 1100);
+      }
+
+      function updateStreakPill() {
+        if (!el.streakPill) {
+          return;
+        }
+        if (streak >= 2) {
+          el.streakPill.hidden = false;
+          el.streakPill.textContent = "🔥 已连续答对 " + streak + " 题！";
+        } else {
+          el.streakPill.hidden = true;
+        }
+      }
+
+      function speakQuestion() {
+        if (!("speechSynthesis" in window)) {
+          return;
+        }
+        tryWakeAudio();
+        const t = el.question.textContent.trim();
+        if (!t) {
+          return;
+        }
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(t);
+        u.lang = "zh-CN";
+        u.rate = 0.88;
+        u.pitch = 1.05;
+        window.speechSynthesis.speak(u);
+      }
+
+      let audioCtx = null;
+
+      function getAudioCtx() {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) {
+          return null;
+        }
+        if (!audioCtx) {
+          audioCtx = new AC();
+        }
+        return audioCtx;
+      }
+
+      function tryWakeAudio() {
+        const ctx = getAudioCtx();
+        if (ctx && ctx.state === "suspended") {
+          ctx.resume();
+        }
+      }
+
+      function soundAllowed() {
+        return !state.soundMuted;
+      }
+
+      function playTone(freq, delaySec, durationSec, volume, type) {
+        if (!soundAllowed()) {
+          return;
+        }
+        const ctx = getAudioCtx();
+        if (!ctx) {
+          return;
+        }
+        tryWakeAudio();
+        const t0 = ctx.currentTime + (delaySec || 0);
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(freq, t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(volume, t0 + 0.018);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + durationSec);
+        osc.connect(g);
+        g.connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + durationSec + 0.03);
+      }
+
+      function playSuccess() {
+        if (!soundAllowed()) {
+          return;
+        }
+        const ctx = getAudioCtx();
+        if (!ctx) {
+          return;
+        }
+        tryWakeAudio();
+        const now = ctx.currentTime;
+
+        function successNote(opts) {
+          const freq = opts.freq;
+          const start = opts.start || 0;
+          const dur = opts.dur || 0.1;
+          const vol = opts.vol || 0.09;
+          const type = opts.type || "sine";
+          const detune = opts.detune || 0;
+          const glideTo = opts.glideTo;
+          const t0 = now + start;
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, t0);
+          if (glideTo) {
+            osc.frequency.linearRampToValueAtTime(glideTo, t0 + dur * 0.82);
+          }
+          osc.detune.setValueAtTime(detune, t0);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.linearRampToValueAtTime(vol, t0 + 0.014);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+          osc.connect(g);
+          g.connect(ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + dur + 0.05);
+        }
+
+        successNote({ freq: 196, start: 0, dur: 0.12, vol: 0.055, type: "triangle" });
+        successNote({ freq: 246.94, start: 0, dur: 0.12, vol: 0.045, type: "triangle" });
+        successNote({ freq: 293.66, start: 0, dur: 0.12, vol: 0.04, type: "triangle" });
+
+        successNote({ freq: 523.25, start: 0.08, dur: 0.09, vol: 0.1, type: "sine", detune: -8 });
+        successNote({ freq: 523.25, start: 0.08, dur: 0.09, vol: 0.08, type: "sine", detune: 10 });
+        successNote({ freq: 659.25, start: 0.15, dur: 0.09, vol: 0.095, type: "sine", detune: -5 });
+        successNote({ freq: 659.25, start: 0.15, dur: 0.09, vol: 0.075, type: "sine", detune: 7 });
+        successNote({ freq: 783.99, start: 0.22, dur: 0.1, vol: 0.09, type: "sine" });
+        successNote({ freq: 1046.5, start: 0.3, dur: 0.11, vol: 0.085, type: "sine", glideTo: 1174.66 });
+        successNote({ freq: 1318.51, start: 0.4, dur: 0.14, vol: 0.07, type: "triangle" });
+
+        let si = 0;
+        while (si < 7) {
+          successNote({
+            freq: 2200 + si * 160 + (si % 3) * 40,
+            start: 0.38 + si * 0.028,
+            dur: 0.038,
+            vol: 0.038,
+            type: "sine"
+          });
+          si++;
+        }
+
+        successNote({ freq: 1567.98, start: 0.56, dur: 0.28, vol: 0.055, type: "sine", detune: -4 });
+        successNote({ freq: 1567.98, start: 0.56, dur: 0.28, vol: 0.045, type: "sine", detune: 6 });
+        successNote({ freq: 2093, start: 0.56, dur: 0.2, vol: 0.035, type: "sine" });
+      }
+
+      function playWrong() {
+        playTone(220, 0, 0.16, 0.09, "triangle");
+        playTone(165, 0.14, 0.18, 0.07, "triangle");
+      }
+
+      function playComplete() {
+        playTone(392, 0, 0.16, 0.08, "sine");
+        playTone(523.25, 0.1, 0.16, 0.08, "sine");
+        playTone(659.25, 0.2, 0.18, 0.08, "sine");
+        playTone(783.99, 0.32, 0.28, 0.07, "sine");
+      }
+
+      function playPop() {
+        playTone(660, 0, 0.045, 0.06, "sine");
+      }
+
+      function updateSoundLabels() {
+        const on = !state.soundMuted;
+        if (el.btnSoundMenu) {
+          el.btnSoundMenu.textContent = on ? "🔊 音效" : "🔇 静音";
+        }
+        if (el.btnSoundGame) {
+          el.btnSoundGame.textContent = on ? "🔊" : "🔇";
+          el.btnSoundGame.setAttribute("aria-label", on ? "关闭音效" : "打开音效");
+        }
+      }
+
+      function toggleSoundMute() {
+        state.soundMuted = !state.soundMuted;
+        saveState(state);
+        updateSoundLabels();
+        if (!state.soundMuted) {
+          tryWakeAudio();
+          playPop();
+        }
+      }
+
+      function showScreen(name) {
+        if (name !== "game") {
+          clearFlashTimer();
+        }
+        el.menu.classList.toggle("active", name === "menu");
+        if (el.teach) {
+          el.teach.classList.toggle("active", name === "teach");
+        }
+        el.game.classList.toggle("active", name === "game");
+        el.done.classList.toggle("active", name === "done");
+      }
+
+      function fillTeach(index) {
+        const lv = LEVELS[index];
+        if (!lv) {
+          return;
+        }
+        if (el.teachBadge) {
+          el.teachBadge.textContent = lv.teachEmoji || "📖";
+        }
+        if (el.teachTitle) {
+          el.teachTitle.textContent = lv.teachTitle || "小课堂";
+        }
+        if (el.teachBody) {
+          el.teachBody.innerHTML = "";
+          const lines = getTeachLinesForLevel(index);
+          lines.forEach(function (line) {
+            const p = document.createElement("p");
+            p.className = "teach-para";
+            p.textContent = line;
+            el.teachBody.appendChild(p);
+          });
+        }
+      }
+
+      function openTeach(index) {
+        pendingLevelIndex = index;
+        fillTeach(index);
+        showScreen("teach");
+      }
+
+      function randInt(min, max) {
+        return min + Math.floor(Math.random() * (max - min + 1));
+      }
+
+      function shuffle(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
+
+      function getChipThemeDef() {
+        const id = state.chipTheme || "dots";
+        for (let k = 0; k < CHIP_THEMES.length; k++) {
+          if (CHIP_THEMES[k].id === id) {
+            return CHIP_THEMES[k];
+          }
+        }
+        return CHIP_THEMES[0];
+      }
+
+      function renderChipMarkup(orderIndex, chipsKey) {
+        const t = getChipThemeDef();
+        if (!t.primarySet) {
+          const chipClass = chipsKey === "yellow" ? "yellow" : chipsKey === "blue" ? "blue" : "";
+          return '<div class="chip ' + chipClass + '"></div>';
+        }
+        let set = t.primarySet;
+        if (chipsKey === "yellow") {
+          set = t.altSet || t.primarySet;
+        } else if (chipsKey === "blue") {
+          set = t.blueSet || t.altSet || t.primarySet;
+        }
+        const emoji = set[orderIndex % set.length];
+        const cls =
+          "chip-emoji" + (chipsKey === "yellow" ? " alt" : chipsKey === "blue" ? " blue" : "");
+        return '<span class="' + cls + '" role="img" aria-hidden="true">' + emoji + "</span>";
+      }
+
+      function patternNormTok(ch) {
+        if (ch == null) {
+          return "";
+        }
+        const t = String(ch).trim().toLowerCase();
+        if (t === "a" || t === "b") {
+          return t;
+        }
+        return t.slice(0, 1) === "b" ? "b" : "a";
+      }
+
+      function patternTokenToChipsKey(tok) {
+        return patternNormTok(tok) === "b" ? "blue" : "pink";
+      }
+
+      function patternBlankIndex(prob) {
+        if (!prob || prob.type !== "patternAb") {
+          return 0;
+        }
+        const n = Number(prob.blankPos);
+        if (!Number.isFinite(n) || n < 0) {
+          return 0;
+        }
+        return n | 0;
+      }
+
+      function patternExpectedAnswer(prob) {
+        if (!prob || prob.type !== "patternAb" || !prob.unitTokens || !prob.unitTokens.length) {
+          return "a";
+        }
+        const L = prob.unitTokens.length;
+        const b = patternBlankIndex(prob);
+        return patternNormTok(prob.unitTokens[b % L]);
+      }
+
+      function renderPatternUnitLegendHTML(unitTokens) {
+        let row = '<div class="pattern-unit-row" aria-hidden="true">';
+        for (let i = 0; i < unitTokens.length; i++) {
+          const ck = patternTokenToChipsKey(patternNormTok(unitTokens[i]));
+          row +=
+            '<div class="cell filled pattern-cell pattern-legend-chip">' +
+            renderChipMarkup(0, ck) +
+            "</div>";
+        }
+        row += "</div>";
+        return row;
+      }
+
+      function renderPatternStripHTML(blankPos, unitTokens) {
+        const b = Number(blankPos);
+        const blank = Number.isFinite(b) && b >= 0 ? b | 0 : 0;
+        const L = unitTokens.length;
+        const len = blank + 1;
+        const atBlank = L > 0 ? patternNormTok(unitTokens[blank % L]) : "a";
+        let html =
+          '<div class="pattern-frame-wrap" data-pattern-expected="' +
+          atBlank +
+          '"><div class="pattern-frame" style="--pcols:' +
+          len +
+          '">';
+        for (let i = 0; i < len; i++) {
+          if (i === blank) {
+            html +=
+              '<div class="cell pattern-gap" aria-label="空格子">' +
+              '<span class="pattern-q">？</span></div>';
+          } else {
+            const tk = patternNormTok(unitTokens[i % L]);
+            const ck = patternTokenToChipsKey(tk);
+            html +=
+              '<div class="cell filled pattern-cell">' +
+              renderChipMarkup(0, ck) +
+              "</div>";
+          }
+        }
+        html += "</div></div>";
+        return html;
+      }
+
+      function renderTenFrame(count, opts) {
+        opts = opts || {};
+        const chips = opts.chips || "pink";
+        const wiggle = opts.wiggle ? " frame-wiggle" : "";
+        const className = "ten-frame" + (opts.small ? " small" : "") + wiggle;
+        let html = `<div class="${className}" data-count="${count}">`;
+        for (let i = 0; i < 10; i++) {
+          const filled = i < count;
+          html += `<div class="cell${filled ? " filled" : ""}">`;
+          if (filled) {
+            html += renderChipMarkup(i, chips);
+          }
+          html += "</div>";
+        }
+        html += "</div>";
+        return html;
+      }
+
+      function renderInteractiveFrame(filledMask, onToggle) {
+        const wrap = document.createElement("div");
+        wrap.className = "ten-frame-wrap";
+        const frame = document.createElement("div");
+        frame.className = "ten-frame";
+        for (let i = 0; i < 10; i++) {
+          const cell = document.createElement("div");
+          cell.className = "cell interactive" + (filledMask[i] ? " filled" : "");
+          if (filledMask[i]) {
+            const order = filledMask.slice(0, i + 1).filter(Boolean).length - 1;
+            const tmp = document.createElement("div");
+            tmp.innerHTML = renderChipMarkup(order, "pink");
+            const node = tmp.firstElementChild;
+            if (node) {
+              cell.appendChild(node);
+            }
+          }
+          cell.addEventListener("click", function () {
+            if (!filledMask[i]) {
+              playPop();
+            }
+            onToggle(i);
+          });
+          frame.appendChild(cell);
+        }
+        wrap.appendChild(frame);
+        return wrap;
+      }
+
+      function buildMenu() {
+        el.levelList.innerHTML = "";
+        LEVELS.forEach((lv, i) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "level-btn";
+          const stars = state.stars[lv.id] || 0;
+          const starStr = "★".repeat(stars) + "☆".repeat(3 - stars);
+          btn.innerHTML = `
+            <span class="level-num">${i + 1}</span>
+            <span class="level-info">
+              <div class="level-title">${lv.title}</div>
+              <div class="level-desc">${descForLevelIndex(i)}</div>
+            </span>
+            <span class="stars">${starStr}</span>
+          `;
+          btn.addEventListener("click", function () {
+            openTeach(i);
+          });
+          el.levelList.appendChild(btn);
+        });
+        buildThemePicker();
+      }
+
+      function buildThemePicker() {
+        const w = chipWordPack();
+        if (el.themePickerLabel) {
+          el.themePickerLabel.innerHTML =
+            "十格阵里摆什么？当前是「<strong>" +
+            w.label +
+            '</strong>」<span class="sub">题目里会问「' +
+            w.fewOf +
+            "」等说法，点下面可切换</span>";
+        }
+        if (!el.themePicker) {
+          return;
+        }
+        el.themePicker.innerHTML = "";
+        const cur = state.chipTheme || "dots";
+        CHIP_THEMES.forEach(function (theme) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "theme-btn" + (theme.id === cur ? " active" : "");
+          b.textContent = theme.label;
+          b.addEventListener("click", function () {
+            state.chipTheme = theme.id;
+            saveState(state);
+            buildThemePicker();
+            buildMenu();
+            if (el.game.classList.contains("active")) {
+              renderProblem();
+            }
+          });
+          el.themePicker.appendChild(b);
+        });
+      }
+
+      function nextProblem() {
+        const lv = LEVELS[currentLevelIndex];
+        el.hint.textContent = hintLineForLevelId(lv.id);
+        el.progress.textContent = `第 ${roundIndex + 1} / ${lv.rounds} 题`;
+        el.feedback.textContent = "";
+        el.feedback.className = "feedback";
+        el.actions.style.display = "none";
+        if (el.gameCard) {
+          el.gameCard.classList.remove("shake");
+        }
+        if (el.burstHost) {
+          el.burstHost.innerHTML = "";
+        }
+        if (el.btnNext) {
+          el.btnNext.classList.remove("pulse-ok");
+        }
+        clearFlashTimer();
+
+        switch (lv.id) {
+          case "subitize":
+            currentProblem = genSubitize();
+            break;
+          case "compare":
+            currentProblem = genCompare();
+            break;
+          case "recognize":
+            currentProblem = genRecognize();
+            break;
+          case "fill5":
+            currentProblem = genFill5();
+            break;
+          case "oneStep":
+            currentProblem = genOneStep();
+            break;
+          case "split":
+            currentProblem = genSplit();
+            break;
+          case "addsub":
+            currentProblem = genAddSub();
+            break;
+          case "make10":
+            currentProblem = genMake10();
+            break;
+          case "flash":
+            currentProblem = genFlash();
+            break;
+          case "patternAb":
+            currentProblem = genPatternAb();
+            break;
+          default:
+            currentProblem = genSubitize();
+        }
+        renderProblem();
+      }
+
+      function genSubitize() {
+        const n = randInt(1, 10);
+        const wrong = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(function (x) { return x !== n; })).slice(0, 3);
+        const choices = shuffle(wrong.concat([n]));
+        return { type: "subitize", n: n, choices: choices };
+      }
+
+      function genCompare() {
+        const a = randInt(1, 10);
+        let b;
+        if (Math.random() < 0.28) {
+          b = a;
+        } else {
+          do {
+            b = randInt(1, 10);
+          } while (b === a);
+        }
+        const topFirst = Math.random() < 0.5;
+        const top = topFirst ? a : b;
+        const bottom = topFirst ? b : a;
+        const correct = top > bottom ? "top" : bottom > top ? "bottom" : "equal";
+        return { type: "compare", top: top, bottom: bottom, correct: correct, a: a, b: b };
+      }
+
+      function genRecognize() {
+        const n = randInt(1, 10);
+        return { type: "recognize", target: n, mask: Array(10).fill(false) };
+      }
+
+      function genFill5() {
+        const shown = randInt(1, 4);
+        const ans = 5 - shown;
+        const wrongPick = shuffle([0, 1, 2, 3, 4].filter(function (x) {
+          return x !== ans;
+        })).slice(0, 3);
+        const choices = shuffle([ans].concat(wrongPick));
+        return { type: "fill5", shown: shown, ans: ans, choices: choices };
+      }
+
+      function genOneStep() {
+        const more = Math.random() < 0.5;
+        let n;
+        let ans;
+        if (more) {
+          n = randInt(1, 9);
+          ans = n + 1;
+        } else {
+          n = randInt(2, 10);
+          ans = n - 1;
+        }
+        const pool = [];
+        for (let x = 0; x <= 10; x++) {
+          if (x !== ans) {
+            pool.push(x);
+          }
+        }
+        const wrongPick = shuffle(pool).slice(0, 3);
+        const choices = shuffle([ans].concat(wrongPick));
+        return { type: "oneStep", more: more, n: n, ans: ans, choices: choices };
+      }
+
+      function genSplit() {
+        const total = randInt(5, 10);
+        const part = randInt(1, total - 1);
+        const other = total - part;
+        const distractors = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (x) {
+          return x !== other && x !== part;
+        })).slice(0, 3);
+        const choices = shuffle(distractors.concat([other])).slice(0, 4);
+        return { type: "split", total: total, part: part, correct: other, choices: choices };
+      }
+
+      function genAddSub() {
+        const add = Math.random() < 0.55;
+        let a, b, ans;
+        if (add) {
+          a = randInt(1, 9);
+          b = randInt(1, 10 - a);
+          ans = a + b;
+        } else {
+          a = randInt(2, 10);
+          b = randInt(1, a - 1);
+          ans = a - b;
+        }
+        const wrongPool = [];
+        for (let x = 0; x <= 10; x++) {
+          if (x !== ans) {
+            wrongPool.push(x);
+          }
+        }
+        const wrongPick = shuffle(wrongPool).slice(0, 3);
+        const choices = shuffle([ans].concat(wrongPick));
+        return { type: "addsub", add: add, a: a, b: b, ans: ans, choices: choices };
+      }
+
+      function genMake10() {
+        const pairs = [
+          { a: 9, b: 2 }, { a: 9, b: 5 }, { a: 8, b: 4 }, { a: 8, b: 6 },
+          { a: 7, b: 5 }, { a: 7, b: 6 }, { a: 6, b: 7 }, { a: 5, b: 8 }
+        ];
+        const p = pairs[randInt(0, pairs.length - 1)];
+        const ans = p.a + p.b;
+        const wrongPool = [];
+        for (let x = 8; x <= 18; x++) {
+          if (x !== ans) {
+            wrongPool.push(x);
+          }
+        }
+        const wrongPick = shuffle(wrongPool).slice(0, 3);
+        const choices = shuffle([ans].concat(wrongPick));
+        return { type: "make10", a: p.a, b: p.b, ans: ans, choices: choices };
+      }
+
+      function genFlash() {
+        const n = randInt(1, 5);
+        const wrongPick = shuffle([1, 2, 3, 4, 5].filter(function (x) {
+          return x !== n;
+        })).slice(0, 3);
+        const choices = shuffle([n].concat(wrongPick));
+        return { type: "flash", n: n, choices: choices, phase: "peek" };
+      }
+
+      function genPatternAb() {
+        const defs = [
+          { w: 3, tokens: ["a", "b"] },
+          { w: 2, tokens: ["a", "a", "b"] },
+          { w: 2, tokens: ["a", "b", "b"] },
+          { w: 2, tokens: ["a", "b", "a"] },
+          { w: 2, tokens: ["a", "a", "b", "b"] },
+          { w: 1, tokens: ["a", "b", "b", "a"] },
+          { w: 1, tokens: ["a", "a", "b", "a", "a", "b"] }
+        ];
+        let total = 0;
+        for (let i = 0; i < defs.length; i++) {
+          total += defs[i].w;
+        }
+        let r = Math.random() * total;
+        let tokens = defs[0].tokens;
+        for (let j = 0; j < defs.length; j++) {
+          r -= defs[j].w;
+          if (r <= 0) {
+            tokens = defs[j].tokens;
+            break;
+          }
+        }
+        const L = tokens.length;
+        const maxBlank = Math.min(L * 3 + 2, 10);
+        const minBlank = L;
+        const blankPos = randInt(minBlank, Math.max(minBlank, maxBlank));
+        const unitTokens = tokens.slice().map(function (t) {
+          return patternNormTok(t);
+        });
+        const correct = unitTokens[blankPos % L];
+        return {
+          type: "patternAb",
+          unitTokens: unitTokens,
+          blankPos: blankPos,
+          correct: correct
+        };
+      }
+
+      function renderProblem() {
+        el.gameArea.innerHTML = "";
+        const p = currentProblem;
+        const w = chipWordPack();
+
+        if (p.type === "subitize") {
+          el.question.textContent = w.qSubitize;
+          el.gameArea.innerHTML =
+            '<div class="ten-frame-wrap">' + renderTenFrame(p.n, { wiggle: true }) + "</div>";
+          appendNumericChoices(el.gameArea, p.choices, function (v) {
+            return v === p.n;
+          });
+        }
+
+        if (p.type === "flash") {
+          clearFlashTimer();
+          if (p.phase === "peek") {
+            el.question.textContent = w.flashPeek;
+            el.gameArea.innerHTML =
+              '<div class="flash-wrap">' +
+              '<div class="ten-frame-wrap">' +
+              renderTenFrame(p.n, { wiggle: true }) +
+              "</div>" +
+              '<p class="hint flash-hint-line">只看一小会儿…</p>' +
+              "</div>";
+            flashTimer = window.setTimeout(function () {
+              if (
+                currentProblem &&
+                currentProblem.type === "flash" &&
+                currentProblem.phase === "peek"
+              ) {
+                currentProblem.phase = "guess";
+                flashTimer = null;
+                renderProblem();
+              }
+            }, 1050);
+          } else {
+            el.question.textContent = w.flashGuess;
+            el.gameArea.innerHTML =
+              '<div class="flash-wrap">' +
+              '<div class="flash-masked">' +
+              '<div class="ten-frame-wrap">' +
+              renderTenFrame(0) +
+              "</div>" +
+              '<div class="flash-veil"><span class="flash-veil-emoji">🙈</span><span>想一想</span></div>' +
+              "</div>" +
+              '<p class="hint" style="text-align:center;margin-top:10px;">选刚才的数量（答案在 1～5）</p>' +
+              "</div>";
+            appendNumericChoices(el.gameArea, p.choices, function (v) {
+              return v === p.n;
+            });
+          }
+        }
+
+        if (p.type === "compare") {
+          el.question.textContent = w.qCompare;
+          el.gameArea.innerHTML =
+            '<div class="compare-stack">' +
+            '<div class="frame-block">' +
+            '<span class="frame-label">上边</span>' +
+            renderTenFrame(p.top, { small: true }) +
+            "</div>" +
+            '<div class="frame-block">' +
+            '<span class="frame-label">下边</span>' +
+            renderTenFrame(p.bottom, { small: true, chips: "yellow" }) +
+            "</div>" +
+            "</div>";
+          const wrap = document.createElement("div");
+          wrap.className = "choices";
+          [
+            { key: "top", label: "上边多" },
+            { key: "bottom", label: "下边多" },
+            { key: "equal", label: "一样多" }
+          ].forEach(function (opt) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "choice wide";
+            btn.textContent = opt.label;
+            btn.addEventListener("click", function () {
+              const correct = opt.key === p.correct;
+              if (!correct) {
+                btn.classList.add("pulse-wrong");
+                window.setTimeout(function () {
+                  btn.classList.remove("pulse-wrong");
+                }, 450);
+              }
+              checkAnswer(correct);
+            });
+            wrap.appendChild(btn);
+          });
+          el.gameArea.appendChild(wrap);
+        }
+
+        if (p.type === "recognize") {
+          el.question.innerHTML =
+            "请摆出数字 <span class=\"digit-pop\">" +
+            p.target +
+            "</span> ——" + w.recognizeTail;
+          const wrap = renderInteractiveFrame(p.mask, function (idx) {
+            p.mask[idx] = !p.mask[idx];
+            renderProblem();
+          });
+          el.gameArea.appendChild(wrap);
+          const btnRow = document.createElement("div");
+          btnRow.className = "actions";
+          btnRow.style.display = "flex";
+          const ok = document.createElement("button");
+          ok.type = "button";
+          ok.className = "btn-primary";
+          ok.textContent = "我摆好了 ✓";
+          ok.addEventListener("click", function () {
+            const cnt = p.mask.filter(Boolean).length;
+            const correct = cnt === p.target;
+            if (!correct) {
+              ok.classList.add("pulse-wrong");
+              window.setTimeout(function () {
+                ok.classList.remove("pulse-wrong");
+              }, 450);
+            }
+            checkAnswer(correct);
+          });
+          btnRow.appendChild(ok);
+          el.gameArea.appendChild(btnRow);
+        }
+
+        if (p.type === "fill5") {
+          el.question.textContent = w.fill5Question(p.shown);
+          el.gameArea.innerHTML =
+            '<p class="hint" style="text-align:center;margin-bottom:6px;">' +
+            w.fill5SubHint() +
+            "</p>" +
+            '<div class="ten-frame-wrap">' +
+            renderTenFrame(p.shown, { wiggle: true }) +
+            "</div>" +
+            '<p class="hint" style="text-align:center;margin-top:6px;">点数字：还要再摆' +
+            w.fewM +
+            "，上面一排就满啦？</p>";
+          appendNumericChoices(el.gameArea, p.choices, function (v) {
+            return v === p.ans;
+          });
+        }
+
+        if (p.type === "oneStep") {
+          el.question.textContent = p.more ? w.oneStepQMore(p.n) : w.oneStepQLess(p.n);
+          el.gameArea.innerHTML =
+            '<p class="hint" style="text-align:center;margin-bottom:6px;">' +
+            (p.more ? "想一想：在现在的数量上「再多 1」。" : "想一想：在现在的数量上「再少 1」。") +
+            "</p>" +
+            '<div class="ten-frame-wrap">' +
+            renderTenFrame(p.n, { wiggle: true }) +
+            "</div>";
+          appendNumericChoices(el.gameArea, p.choices, function (v) {
+            return v === p.ans;
+          });
+        }
+
+        if (p.type === "split") {
+          el.question.textContent = p.part + " 和几合起来是 " + p.total + "？";
+          el.gameArea.innerHTML =
+            '<div class="compare-stack">' +
+            '<div class="frame-block">' +
+            '<span class="frame-label">上边</span>' +
+            renderTenFrame(p.part) +
+            "</div>" +
+            '<div class="frame-block">' +
+            '<span class="frame-label">下边</span>' +
+            renderTenFrame(p.total - p.part, { chips: "yellow" }) +
+            "</div>" +
+            "</div>" +
+            '<p class="hint" style="margin-top:4px;">' + w.splitHint(p.part, p.total) + "</p>";
+          appendNumericChoices(el.gameArea, p.choices, function (v) {
+            return v === p.correct;
+          });
+        }
+
+        if (p.type === "addsub") {
+          const op = p.add ? "加" : "减";
+          el.question.textContent = p.a + " " + op + " " + p.b + " 等于几？";
+          if (p.add) {
+            el.gameArea.innerHTML =
+              '<div class="compare-stack">' +
+              '<div class="frame-block">' +
+              '<span class="frame-label">上边</span>' +
+              renderTenFrame(p.a) +
+              "</div>" +
+              '<div class="frame-block">' +
+              '<span class="frame-label">下边</span>' +
+              renderTenFrame(p.b, { chips: "yellow", small: true }) +
+              "</div>" +
+              "</div>" +
+              '<p class="hint">' + w.addHint(p.a, p.b) + "</p>";
+          } else {
+            el.gameArea.innerHTML =
+              '<div class="compare-stack">' +
+              '<div class="frame-block">' +
+              '<span class="frame-label">上边</span>' +
+              renderTenFrame(p.a) +
+              "</div>" +
+              "</div>" +
+              '<p class="hint">' + w.subHint(p.a, p.b) + "</p>";
+          }
+          appendNumericChoices(el.gameArea, p.choices, function (v) {
+            return v === p.ans;
+          });
+        }
+
+        if (p.type === "make10") {
+          el.question.textContent = p.a + " + " + p.b + " = ？（想一想凑十）";
+          const fromSecond = Math.min(p.b, 10 - p.a);
+          const rest = p.b - fromSecond;
+          el.gameArea.innerHTML =
+            '<div class="make-ten-demo">' +
+            "把 " +
+            p.b +
+            " 分成 <strong>" +
+            fromSecond +
+            "</strong> 和 <strong>" +
+            rest +
+            "</strong>，" +
+            p.a +
+            " 先和 " +
+            fromSecond +
+            " 凑成 10" +
+            (rest > 0 ? "，再加上剩下的 " + rest : "") +
+            "。" +
+            "</div>" +
+            '<div class="compare-stack">' +
+            '<div class="frame-block">' +
+            '<span class="frame-label">上边</span>' +
+            renderTenFrame(p.a) +
+            "</div>" +
+            '<div class="frame-block">' +
+            '<span class="frame-label">下边（凑十）</span>' +
+            renderTenFrame(fromSecond, { chips: "yellow", small: true }) +
+            "</div>" +
+            "</div>" +
+            (rest > 0
+              ? '<p class="hint">先凑成十，别忘了算的时候还要加上剩下的 ' + rest + "</p>"
+              : '<p class="hint">数一数，一共是多少？</p>');
+          appendNumericChoices(el.gameArea, p.choices, function (v) {
+            return v === p.ans;
+          });
+        }
+
+        if (p.type === "patternAb") {
+          el.question.textContent = w.patternQuestion;
+          if (!p.unitTokens || !p.unitTokens.length) {
+            p.unitTokens = ["a", "b"];
+          }
+          const unit = p.unitTokens;
+          p.blankPos = patternBlankIndex(p);
+          p.correct = patternExpectedAnswer(p);
+          el.gameArea.innerHTML =
+            '<p class="hint" style="margin-bottom:8px;">' + w.patternLineHint + "</p>" +
+            '<p class="pattern-unit-legend-title">这一题要重复的「一小节」（共 ' +
+            unit.length +
+            " 格）：</p>" +
+            renderPatternUnitLegendHTML(unit) +
+            renderPatternStripHTML(p.blankPos, unit);
+          appendPatternAbChoices(el.gameArea, p, w);
+          window.requestAnimationFrame(function () {
+            if (!el.gameArea) {
+              return;
+            }
+            const wrap = el.gameArea.querySelector(".pattern-frame-wrap");
+            if (wrap) {
+              wrap.scrollIntoView({ inline: "end", block: "nearest" });
+            }
+            el.gameArea.scrollLeft = Math.max(0, el.gameArea.scrollWidth - el.gameArea.clientWidth);
+          });
+        }
+      }
+
+      function appendPatternAbChoices(parent, p, w) {
+        const wrap = document.createElement("div");
+        wrap.className = "choices pattern-ab-choices";
+        shuffle(["a", "b"]).forEach(function (key) {
+          const chips = key === "a" ? "pink" : "blue";
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "choice pattern-pick";
+          btn.setAttribute("data-pattern-key", key);
+          const vis = document.createElement("div");
+          vis.className = "pattern-pick-visual";
+          vis.innerHTML = renderChipMarkup(0, chips);
+          const lab = document.createElement("span");
+          lab.className = "pattern-pick-label";
+          lab.textContent = key === "a" ? w.patternPickA : w.patternPickB;
+          btn.appendChild(vis);
+          btn.appendChild(lab);
+          btn.addEventListener("click", function (ev) {
+            const prob = currentProblem;
+            const choiceKeyRaw = ev.currentTarget.getAttribute("data-pattern-key");
+            const choiceKey = patternNormTok(choiceKeyRaw);
+            if (!prob || prob.type !== "patternAb" || !choiceKey) {
+              return;
+            }
+            const wrap = el.gameArea && el.gameArea.querySelector(".pattern-frame-wrap");
+            const fromDom = wrap ? wrap.getAttribute("data-pattern-expected") : null;
+            const expected = patternNormTok(fromDom != null && fromDom !== "" ? fromDom : patternExpectedAnswer(prob));
+            const isCorrect = choiceKey === expected;
+            if (!isCorrect) {
+              btn.classList.add("pulse-wrong");
+              window.setTimeout(function () {
+                btn.classList.remove("pulse-wrong");
+              }, 450);
+            }
+            checkAnswer(isCorrect);
+          });
+          wrap.appendChild(btn);
+        });
+        parent.appendChild(wrap);
+      }
+
+      function appendNumericChoices(parent, choices, isCorrect) {
+        const wrap = document.createElement("div");
+        wrap.className = "choices cols-3";
+        shuffle(choices.slice()).forEach(function (c) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "choice";
+          btn.textContent = c;
+          btn.addEventListener("click", function () {
+            const correct = isCorrect(c);
+            if (!correct) {
+              btn.classList.add("pulse-wrong");
+              window.setTimeout(function () {
+                btn.classList.remove("pulse-wrong");
+              }, 450);
+            }
+            checkAnswer(correct);
+          });
+          wrap.appendChild(btn);
+        });
+        parent.appendChild(wrap);
+      }
+
+      function checkAnswer(ok) {
+        if (el.actions.style.display === "flex" && el.btnNext.textContent === "下一题") {
+          return;
+        }
+        clearTimeout(feedbackTimer);
+        const lvNow = LEVELS[currentLevelIndex];
+        const flashLevel = lvNow && lvNow.id === "flash";
+        const patternLevel = lvNow && lvNow.id === "patternAb";
+        kidHaptic(ok, !ok && (flashLevel || patternLevel));
+        el.feedback.className = "feedback " + (ok ? "ok" : "bad");
+        let wrongPool = SOFT_WRONG;
+        if (!ok && flashLevel) {
+          wrongPool = SOFT_WRONG.concat(FLASH_SOFT);
+        } else if (!ok && patternLevel) {
+          wrongPool = SOFT_WRONG.concat(PATTERN_SOFT);
+        }
+        el.feedback.textContent = ok ? pickRandom(PRAISE_OK) : pickRandom(wrongPool);
+        if (ok) {
+          streak++;
+          updateStreakPill();
+          playSuccess();
+          burstCelebrate(false);
+          if (el.btnNext) {
+            el.btnNext.classList.add("pulse-ok");
+            window.setTimeout(function () {
+              el.btnNext.classList.remove("pulse-ok");
+            }, 650);
+          }
+          el.actions.style.display = "flex";
+          el.btnNext.textContent = "下一题";
+        } else {
+          streak = 0;
+          updateStreakPill();
+          playWrong();
+          if (el.gameCard) {
+            el.gameCard.classList.remove("shake");
+            void el.gameCard.offsetWidth;
+            el.gameCard.classList.add("shake");
+            window.setTimeout(function () {
+              if (el.gameCard) {
+                el.gameCard.classList.remove("shake");
+              }
+            }, 600);
+          }
+          feedbackTimer = setTimeout(function () {
+            el.feedback.textContent = "";
+            el.feedback.className = "feedback";
+          }, 2400);
+        }
+      }
+
+      function advanceRound() {
+        roundIndex++;
+        const lv = LEVELS[currentLevelIndex];
+        if (roundIndex >= lv.rounds) {
+          finishLevel();
+        } else {
+          nextProblem();
+        }
+      }
+
+      function finishLevel() {
+        const lv = LEVELS[currentLevelIndex];
+        state.stars[lv.id] = 3;
+        saveState(state);
+        playComplete();
+        streak = 0;
+        updateStreakPill();
+        el.doneMessage.innerHTML = "🎉 完成「" + lv.title + "」！<br><br>你得到了 ★★★<br><br>真棒，可以继续玩别的关卡！";
+        showScreen("done");
+        buildMenu();
+      }
+
+      function startLevel(index) {
+        tryWakeAudio();
+        streak = 0;
+        updateStreakPill();
+        currentLevelIndex = index;
+        roundIndex = 0;
+        showScreen("game");
+        nextProblem();
+      }
+
+      if (el.btnTeachBack) {
+        el.btnTeachBack.addEventListener("click", function () {
+          showScreen("menu");
+          buildMenu();
+        });
+      }
+
+      if (el.btnTeachStart) {
+        el.btnTeachStart.addEventListener("click", function () {
+          startLevel(pendingLevelIndex);
+        });
+      }
+
+      el.btnBack.addEventListener("click", function () {
+        showScreen("menu");
+        buildMenu();
+      });
+
+      el.btnDoneHome.addEventListener("click", function () {
+        showScreen("menu");
+        buildMenu();
+      });
+
+      el.btnNext.addEventListener("click", function () {
+        if (el.btnNext.textContent === "下一题") advanceRound();
+      });
+
+      if (el.btnSoundMenu) {
+        el.btnSoundMenu.addEventListener("click", function () {
+          toggleSoundMute();
+        });
+      }
+      if (el.btnSoundGame) {
+        el.btnSoundGame.addEventListener("click", function () {
+          toggleSoundMute();
+        });
+      }
+
+      if (el.btnReadQuestion) {
+        el.btnReadQuestion.addEventListener("click", function () {
+          speakQuestion();
+        });
+      }
+
+      updateSoundLabels();
+      updateStreakPill();
+      buildMenu();
+    })();
+  </script>
+</body>
+</html>
